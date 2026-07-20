@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { getAuth, clearAuth } from "@/lib/auth";
 import { Plus, Trash2, Pencil, Check, X, Users, Play, RotateCcw, Sparkles } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useCricket } from "@/lib/cricket/store";
@@ -98,12 +97,7 @@ export function HomeView() {
   const { state, dispatch } = useCricket();
   const canStart =
     state.teams[0].players.length >= 2 && state.teams[1].players.length >= 2;
-  const [isVisitor, setIsVisitor] = useState(false);
-
-  useEffect(() => {
-    const auth = getAuth();
-    setIsVisitor(Boolean(auth && auth.user && auth.user.id === 'visitor'));
-  }, []);
+  
 
   const [isFlipping, setIsFlipping] = useState(false);
   const [tossResultLabel, setTossResultLabel] = useState<string | null>(null);
@@ -194,25 +188,7 @@ export function HomeView() {
               >
                 History
               </Link>
-              {!isVisitor ? (
-                <Link
-                  to="/"
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-white/10"
-                >
-                  Visitor
-                </Link>
-              ) : (
-                <button
-                  onClick={() => {
-                    clearAuth();
-                    setIsVisitor(false);
-                    window.location.href = '/';
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-white/10"
-                >
-                  Visitor Logout
-                </button>
-              )}
+              
             </div>
           </div>
         </div>
