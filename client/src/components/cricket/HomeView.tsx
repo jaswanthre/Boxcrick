@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { getAuth, clearAuth } from "@/lib/auth";
-import { Plus, Trash2, Pencil, Check, X, Users, Play, RotateCcw, Sparkles } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X, Users, Play, RotateCcw, Sparkles, List, XCircle } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useCricket } from "@/lib/cricket/store";
 import type { Team } from "@/lib/cricket/types";
@@ -96,14 +96,37 @@ function TeamCard({ teamIdx }: { teamIdx: 0 | 1 }) {
 
 export function HomeView() {
   const { state, dispatch } = useCricket();
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
   const canStart =
     state.teams[0].players.length >= 2 && state.teams[1].players.length >= 2;
   const [isVisitor, setIsVisitor] = useState(false);
+  const [recentTeams, setRecentTeams] = useState<{ _id: string; teams: [Team, Team]; result?: string; }[]>([]);
+  const [showRecentModal, setShowRecentModal] = useState(false);
 
   useEffect(() => {
     const auth = getAuth();
     setIsVisitor(Boolean(auth && auth.user && auth.user.id === 'visitor'));
   }, []);
+
+  useEffect(() => {
+    const loadRecent = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/matches`);
+        if (!res.ok) throw new Error('Failed to load recent teams');
+        const data = await res.json();
+        setRecentTeams(
+          (data ?? [])
+            .filter((match: any) => Array.isArray(match.teams) && match.teams.length === 2)
+            .map((match: any) => ({ _id: match._id, teams: match.teams, result: match.result }))
+            .slice(0, 6),
+        );
+      } catch {
+        setRecentTeams([]);
+      }
+    };
+
+    loadRecent();
+  }, [API_BASE]);
 
   const [isFlipping, setIsFlipping] = useState(false);
   const [tossResultLabel, setTossResultLabel] = useState<string | null>(null);
@@ -187,6 +210,12 @@ export function HomeView() {
               >
                 <Play className="h-4 w-4" /> Start Match
               </button>
+              <button
+                onClick={() => setShowRecentModal(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-white/10"
+              >
+                <List className="h-4 w-4" /> Recent Teams
+              </button>
               <Link
                 to="/history"
                 className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-white/10"
@@ -223,6 +252,52 @@ export function HomeView() {
           @keyframes coinFlip { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(1080deg); } }
         `}</style>
       </div>
+      {showRecentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="relative w-full max-w-4xl overflow-hidden rounded-3xl border border-white/10 bg-background p-6 shadow-2xl">
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-semibold">Reuse Recent Teams</h2>
+                <p className="text-sm text-muted-foreground">Select a recent pairing to restore both teams and edit players.</p>
+              </div>
+              <button
+                onClick={() => setShowRecentModal(false)}
+                className="rounded-full p-2 text-muted-foreground transition hover:bg-white/10 hover:text-foreground"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="grid gap-3">
+              {recentTeams.length === 0 ? (
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-center text-sm text-muted-foreground">
+                  No recent teams available yet. Finish a match to see recent pairings here.
+                </div>
+              ) : (
+                recentTeams.map((match) => (
+                  <button
+                    key={match._id}
+                    onClick={() => {
+                      dispatch({ type: 'SET_TEAMS', teams: match.teams });
+                      setShowRecentModal(false);
+                    }}
+                    className="group rounded-3xl border border-white/10 bg-white/5 p-4 text-left transition hover:border-gold/50 hover:bg-white/10"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-foreground">{match.teams[0]?.name ?? 'Team A'} vs {match.teams[1]?.name ?? 'Team B'}</p>
+                        {match.result ? <p className="text-xs text-muted-foreground">Last result: {match.result}</p> : null}
+                      </div>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                        Use this team set
+                      </span>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

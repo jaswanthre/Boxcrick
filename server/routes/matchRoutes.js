@@ -1,6 +1,9 @@
 const r = require('express').Router();
 const M = require('../models/Match');
 
+let lastLiveState = null;
+let lastLiveCompletedAt = null;
+
 const getWeekRange = (date = new Date()) => {
   const d = new Date(date);
   const day = d.getDay();
@@ -27,8 +30,13 @@ r.get('/', async (req, res) => {
 
 r.get('/live', async (req, res) => {
   const active = await M.findOne({ isLive: true }).sort({ updatedAt: -1 });
-  if (!active) return res.json(null);
-  res.json(active.liveState ?? null);
+  if (active) return res.json(active.liveState ?? null);
+
+  const cutoff = new Date(Date.now() - 5 * 60 * 1000);
+  const recentCompleted = await M.findOne({ isLive: false, completedAt: { $gte: cutoff } })
+    .sort({ completedAt: -1 });
+  if (!recentCompleted) return res.json(null);
+  res.json(recentCompleted.liveState ?? null);
 });
 
 r.put('/live', async (req, res) => {
@@ -51,6 +59,11 @@ r.put('/live', async (req, res) => {
 });
 
 r.delete('/live', async (req, res) => {
+  const active = await M.findOne({ isLive: true }).sort({ updatedAt: -1 });
+  if (active) {
+    lastLiveState = active.liveState ?? null;
+    lastLiveCompletedAt = new Date();
+  }
   await M.deleteMany({ isLive: true });
   res.json({ ok: true });
 });

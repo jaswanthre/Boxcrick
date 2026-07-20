@@ -40,13 +40,13 @@ function VisitorView() {
   }, []);
 
   const liveState = useMemo(() => {
-    if (serverLive?.phase === 'live' && serverLive.innings?.length > 0) return serverLive;
+    if (serverLive?.innings?.length > 0) return serverLive;
     if (state.phase === 'live' && state.innings.length > 0) return state;
     return null;
   }, [serverLive, state]);
 
   const previousInnings = useMemo(() => {
-    if (!liveState || liveState.phase !== 'live' || liveState.innings.length <= 1) return [];
+    if (!liveState || liveState.innings.length <= 1) return [];
     return liveState.innings.slice(0, liveState.currentInningsIdx);
   }, [liveState]);
 

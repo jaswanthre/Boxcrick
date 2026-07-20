@@ -29,6 +29,7 @@ type Action =
   | { type: "SET_TOSS"; tossWinnerIdx: 0 | 1; decision: "bat" | "bowl" }
   | { type: "SET_OVERS"; overs: number }
   | { type: "SET_BOWLER_LIMIT"; bowlerLimit: number }
+  | { type: "SET_TEAMS"; teams: [Team, Team]; overs?: number; bowlerLimit?: number }
   | { type: "START_MATCH"; strikerId: string; nonStrikerId: string; bowlerId: string }
   | { type: "LOGIN"; user: import("./types").AuthUser }
   | { type: "LOGOUT" }
@@ -117,6 +118,18 @@ function reducer(state: MatchState, action: Action): MatchState {
       return { ...state, overs: action.overs };
     case "SET_BOWLER_LIMIT":
       return { ...state, bowlerLimit: action.bowlerLimit };
+    case "SET_TEAMS":
+      return {
+        ...state,
+        teams: action.teams,
+        overs: action.overs ?? state.overs,
+        bowlerLimit: action.bowlerLimit ?? state.bowlerLimit,
+        phase: "home",
+        innings: [],
+        currentInningsIdx: 0,
+        ended: false,
+        matchSaved: false,
+      };
     case "START_MATCH": {
       const battingTeamIdx: 0 | 1 =
         action.strikerId && action.nonStrikerId
