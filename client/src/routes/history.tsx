@@ -273,14 +273,7 @@ function HistoryPage() {
           >
             <ArrowLeft className="h-4 w-4" /> Logout
           </button>
-        ) : (
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-white/10"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back to home
-          </Link>
-        )}
+        ) : null}
       </div>
 
       {status === "loading" ? (
