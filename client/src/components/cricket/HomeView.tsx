@@ -116,90 +116,96 @@ export function HomeView() {
         </p>
       </div>
 
-      <div className="glass-card p-6 sm:p-8">
-        <h2 className="mb-6 text-xl font-semibold">Create Match</h2>
+      <div className="space-y-6">
+        <div className="mb-2 px-2 sm:px-0">
+          <h2 className="text-xl font-semibold">Create Match</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Add your players and set up the match in just a few taps.</p>
+        </div>
+
         <div className="grid gap-5 md:grid-cols-2">
           <TeamCard teamIdx={0} />
           <TeamCard teamIdx={1} />
         </div>
 
-        <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-muted-foreground">
-            {canStart ? "Ready to set up your match." : "Add at least 2 players per team to continue."}
-          </p>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="flex flex-col gap-3 rounded-3xl border border-white/10 p-4 sm:flex-row sm:items-center sm:gap-4">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`coin ${isFlipping ? 'flipping' : ''}`}
-                  role="img"
-                  aria-label={tossResultLabel ? `Toss: ${tossResultLabel}` : 'Coin'}
-                  style={{ width: 44, height: 44 }}
+        <div className="glass-card p-6 sm:p-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-muted-foreground">
+              {canStart ? "Ready to set up your match." : "Add at least 2 players per team to continue."}
+            </p>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="flex flex-col gap-3 rounded-3xl border border-white/10 p-4 sm:flex-row sm:items-center sm:gap-4">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`coin ${isFlipping ? 'flipping' : ''}`}
+                    role="img"
+                    aria-label={tossResultLabel ? `Toss: ${tossResultLabel}` : 'Coin'}
+                    style={{ width: 44, height: 44 }}
+                  >
+                    <div className="coin-face coin-heads">H</div>
+                    <div className="coin-face coin-tails">T</div>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {tossResultLabel ? <span>Result: <strong className="ml-1">{tossResultLabel}</strong></span> : <span>Flip to decide toss</span>}
+                  </div>
+                </div>
+                <button
+                  disabled={isFlipping}
+                  onClick={async () => {
+                    if (isFlipping) return;
+                    setIsFlipping(true);
+                    setTossResultLabel(null);
+                    await new Promise((res) => setTimeout(res, 1200));
+                    let head = false;
+                    try {
+                      const arr = new Uint32Array(1);
+                      crypto.getRandomValues(arr);
+                      head = (arr[0] / 0xffffffff) < 0.5;
+                    } catch (e) {
+                      head = Math.random() < 0.5;
+                    }
+                    const label = head ? 'Heads' : 'Tails';
+                    setTossResultLabel(label);
+                    dispatch({ type: 'SET_TOSS', tossWinnerIdx: head ? 0 : 1, decision: 'bat' });
+                    setIsFlipping(false);
+                  }}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium hover:bg-white/10 disabled:opacity-40 sm:w-auto"
                 >
-                  <div className="coin-face coin-heads">H</div>
-                  <div className="coin-face coin-tails">T</div>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {tossResultLabel ? <span>Result: <strong className="ml-1">{tossResultLabel}</strong></span> : <span>Flip to decide toss</span>}
-                </div>
+                  Toss Coin
+                </button>
               </div>
-              <button
-                disabled={isFlipping}
-                onClick={async () => {
-                  if (isFlipping) return;
-                  setIsFlipping(true);
-                  setTossResultLabel(null);
-                  await new Promise((res) => setTimeout(res, 1200));
-                  let head = false;
-                  try {
-                    const arr = new Uint32Array(1);
-                    crypto.getRandomValues(arr);
-                    head = (arr[0] / 0xffffffff) < 0.5;
-                  } catch (e) {
-                    head = Math.random() < 0.5;
-                  }
-                  const label = head ? 'Heads' : 'Tails';
-                  setTossResultLabel(label);
-                  dispatch({ type: 'SET_TOSS', tossWinnerIdx: head ? 0 : 1, decision: 'bat' });
-                  setIsFlipping(false);
-                }}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium hover:bg-white/10 disabled:opacity-40 sm:w-auto"
-              >
-                Toss Coin
-              </button>
-            </div>
 
-            <div className="flex w-full flex-col gap-3 sm:flex-row sm:w-auto">
-              <button
-                onClick={() => dispatch({ type: "RESET_HOME" })}
-                className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-white/5 hover:text-foreground sm:w-auto"
-              >
-                <RotateCcw className="h-4 w-4" /> Reset
-              </button>
-              <button
-                disabled={!canStart}
-                onClick={() => dispatch({ type: "GOTO_SETUP" })}
-                className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-br from-gold to-[oklch(0.72_0.16_70)] px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-gold/20 transition hover:brightness-110 disabled:opacity-40 disabled:shadow-none sm:w-auto"
-              >
-                <Play className="h-4 w-4" /> Start Match
-              </button>
-              
-              <Link
-                to="/history"
-                className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-white/10 sm:w-auto"
-              >
-                History
-              </Link>
+              <div className="flex w-full flex-col gap-3 sm:flex-row sm:w-auto">
+                <button
+                  onClick={() => dispatch({ type: "RESET_HOME" })}
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-white/5 hover:text-foreground sm:w-auto"
+                >
+                  <RotateCcw className="h-4 w-4" /> Reset
+                </button>
+                <button
+                  disabled={!canStart}
+                  onClick={() => dispatch({ type: "GOTO_SETUP" })}
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-br from-gold to-[oklch(0.72_0.16_70)] px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-gold/20 transition hover:brightness-110 disabled:opacity-40 disabled:shadow-none sm:w-auto"
+                >
+                  <Play className="h-4 w-4" /> Start Match
+                </button>
+                
+                <Link
+                  to="/history"
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-white/10 sm:w-auto"
+                >
+                  History
+                </Link>
+              </div>
             </div>
           </div>
+          <style>{`
+            .coin { position: relative; perspective: 800px; display: inline-block; }
+            .coin .coin-face { position: absolute; inset: 0; display:flex;align-items:center;justify-content:center;border-radius:9999px;background:linear-gradient(180deg,#f6c85f,#c6881f);color:#111;font-weight:700; }
+            .coin .coin-tails { transform: rotateY(180deg); background:linear-gradient(180deg,#fff,#ddd); }
+            .coin.flipping { animation: coinFlip 1.2s cubic-bezier(.2,.9,.2,1); }
+            @keyframes coinFlip { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(1080deg); } }
+          `}</style>
         </div>
-        <style>{`
-          .coin { position: relative; perspective: 800px; display: inline-block; }
-          .coin .coin-face { position: absolute; inset: 0; display:flex;align-items:center;justify-content:center;border-radius:9999px;background:linear-gradient(180deg,#f6c85f,#c6881f);color:#111;font-weight:700; }
-          .coin .coin-tails { transform: rotateY(180deg); background:linear-gradient(180deg,#fff,#ddd); }
-          .coin.flipping { animation: coinFlip 1.2s cubic-bezier(.2,.9,.2,1); }
-          @keyframes coinFlip { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(1080deg); } }
-        `}</style>
       </div>
       
     </div>
