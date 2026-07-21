@@ -74,7 +74,7 @@ function TeamCard({ teamIdx }: { teamIdx: 0 | 1 }) {
           dispatch({ type: "ADD_PLAYER", teamIdx, name: newName.trim() });
           setNewName("");
         }}
-        className="mt-3 flex gap-2"
+        className="mt-3 flex flex-col gap-2 sm:flex-row"
       >
         <input
           value={newName}
@@ -84,7 +84,7 @@ function TeamCard({ teamIdx }: { teamIdx: 0 | 1 }) {
         />
         <button
           type="submit"
-          className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-gold-soft px-3 py-2 text-sm font-medium text-gold transition hover:bg-gold/25"
+          className="w-full shrink-0 inline-flex items-center justify-center gap-1.5 rounded-xl bg-gold-soft px-3 py-2 text-sm font-medium text-gold transition hover:bg-gold/25 sm:w-auto"
         >
           <Plus className="h-4 w-4" /> Add
         </button>
@@ -123,12 +123,12 @@ export function HomeView() {
           <TeamCard teamIdx={1} />
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-muted-foreground">
             {canStart ? "Ready to set up your match." : "Add at least 2 players per team to continue."}
           </p>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-white/5 p-4 sm:flex-row sm:items-center">
               <div
                 className={`coin ${isFlipping ? 'flipping' : ''}`}
                 role="img"
@@ -161,34 +161,33 @@ export function HomeView() {
                   dispatch({ type: 'SET_TOSS', tossWinnerIdx: head ? 0 : 1, decision: 'bat' });
                   setIsFlipping(false);
                 }}
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium hover:bg-white/10 disabled:opacity-40"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium hover:bg-white/10 disabled:opacity-40 sm:w-auto"
               >
                 Toss Coin
               </button>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex w-full flex-col gap-3 sm:flex-row sm:w-auto">
               <button
                 onClick={() => dispatch({ type: "RESET_HOME" })}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-white/5 hover:text-foreground"
+                className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-white/5 hover:text-foreground sm:w-auto"
               >
                 <RotateCcw className="h-4 w-4" /> Reset
               </button>
               <button
                 disabled={!canStart}
                 onClick={() => dispatch({ type: "GOTO_SETUP" })}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-gold to-[oklch(0.72_0.16_70)] px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-gold/20 transition hover:brightness-110 disabled:opacity-40 disabled:shadow-none"
+                className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-br from-gold to-[oklch(0.72_0.16_70)] px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-gold/20 transition hover:brightness-110 disabled:opacity-40 disabled:shadow-none sm:w-auto"
               >
                 <Play className="h-4 w-4" /> Start Match
               </button>
               
               <Link
                 to="/history"
-                className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-white/10"
+                className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-white/10 sm:w-auto"
               >
                 History
               </Link>
-              
             </div>
           </div>
         </div>
