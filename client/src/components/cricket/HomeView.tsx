@@ -128,18 +128,20 @@ export function HomeView() {
             {canStart ? "Ready to set up your match." : "Add at least 2 players per team to continue."}
           </p>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-white/5 p-4 sm:flex-row sm:items-center">
-              <div
-                className={`coin ${isFlipping ? 'flipping' : ''}`}
-                role="img"
-                aria-label={tossResultLabel ? `Toss: ${tossResultLabel}` : 'Coin'}
-                style={{ width: 44, height: 44 }}
-              >
-                <div className="coin-face coin-heads">H</div>
-                <div className="coin-face coin-tails">T</div>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                {tossResultLabel ? <span>Result: <strong className="ml-1">{tossResultLabel}</strong></span> : <span>Flip to decide toss</span>}
+            <div className="flex flex-col gap-3 rounded-3xl border border-white/10 p-4 sm:flex-row sm:items-center sm:gap-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`coin ${isFlipping ? 'flipping' : ''}`}
+                  role="img"
+                  aria-label={tossResultLabel ? `Toss: ${tossResultLabel}` : 'Coin'}
+                  style={{ width: 44, height: 44 }}
+                >
+                  <div className="coin-face coin-heads">H</div>
+                  <div className="coin-face coin-tails">T</div>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {tossResultLabel ? <span>Result: <strong className="ml-1">{tossResultLabel}</strong></span> : <span>Flip to decide toss</span>}
+                </div>
               </div>
               <button
                 disabled={isFlipping}
