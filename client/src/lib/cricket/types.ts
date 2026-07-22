@@ -1,18 +1,14 @@
 export type Player = { id: string; name: string };
 export type Team = { name: string; players: Player[] };
 
-export type DismissalType =
-  | "Bowled"
-  | "Caught"
-  | "Run Out"
-  | "Stumping"
-  | "Retired Hurt";
+export type DismissalType = "Bowled" | "Caught" | "Run Out" | "Stumping" | "Retired Hurt";
 
 export type Ball = {
   id: string;
   runs: number; // runs off bat (or run extras for wides/no-balls, we treat runs as total runs added except that a wide/no-ball automatically adds 1)
   extra?: "wide" | "noball";
   runOutAt?: 1 | 2;
+  runOutSide?: "striker" | "non-striker";
   isWicket?: boolean;
   dismissalType?: DismissalType;
   batterOutId?: string; // for run outs may be non-striker

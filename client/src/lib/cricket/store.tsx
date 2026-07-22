@@ -1,9 +1,12 @@
 import { createContext, useContext, useMemo, useReducer, useEffect, type ReactNode } from "react";
 import type { Ball, MatchState, Player, Team } from "./types";
 import { inningsTotals, isLegalBall, uid } from "./stats";
+import { getAuth } from "@/lib/auth";
 
 const emptyTeam = (name: string): Team => ({ name, players: [] });
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+const SNAPSHOT_KEY = "criclive_match_snapshot";
+const LAST_TEAMS_KEY = "criclive_last_teams";
 
 const initial: MatchState = {
   phase: "home",
@@ -53,7 +56,23 @@ type Action =
   | { type: "END_INNINGS" }
   | { type: "START_SECOND_INNINGS"; strikerId: string; nonStrikerId: string; bowlerId: string }
   | { type: "END_MATCH" }
-  | { type: "SWAP_STRIKE" };
+  | { type: "SWAP_STRIKE" }
+  | {
+      type: "RESTORE_SNAPSHOT";
+      snapshot: Pick<
+        MatchState,
+        | "phase"
+        | "teams"
+        | "overs"
+        | "bowlerLimit"
+        | "tossWinnerIdx"
+        | "decision"
+        | "innings"
+        | "currentInningsIdx"
+        | "ended"
+        | "matchSaved"
+      >;
+    };
 
 function recomputeOverIndices(balls: Omit<Ball, "overIdx" | "legalBallInOver">[]): Ball[] {
   const result: Ball[] = [];
@@ -72,6 +91,50 @@ function recomputeOverIndices(balls: Omit<Ball, "overIdx" | "legalBallInOver">[]
     result.push(full);
   }
   return result;
+}
+
+function rebuildInningsFromBalls(
+  innings: MatchState["innings"][number],
+  balls: Ball[],
+): Pick<MatchState["innings"][number], "strikerId" | "nonStrikerId" | "outPlayers"> {
+  if (balls.length === 0) {
+    return {
+      strikerId: innings.strikerId,
+      nonStrikerId: innings.nonStrikerId,
+      outPlayers: [],
+    };
+  }
+
+  let striker = balls[0].strikerId;
+  let nonStriker = balls[0].nonStrikerId;
+  let outPlayers: string[] = [];
+
+  for (const b of balls) {
+    striker = b.strikerId;
+    nonStriker = b.nonStrikerId;
+
+    const shouldSwap =
+      (!b.isWicket && !b.extra && b.runs % 2 === 1) || (b.extra === "noball" && b.runs % 2 === 1);
+    if (shouldSwap) {
+      [striker, nonStriker] = [nonStriker, striker];
+    }
+
+    if (b.legalBallInOver === 6) {
+      [striker, nonStriker] = [nonStriker, striker];
+    }
+
+    if (b.isWicket && b.dismissalType !== "Retired Hurt") {
+      const outId =
+        b.dismissalType === "Run Out"
+          ? b.runOutSide === "non-striker"
+            ? b.nonStrikerId
+            : b.strikerId
+          : (b.batterOutId ?? b.strikerId);
+      outPlayers = [...outPlayers, outId];
+    }
+  }
+
+  return { strikerId: striker, nonStrikerId: nonStriker, outPlayers };
 }
 
 function reducer(state: MatchState, action: Action): MatchState {
@@ -133,9 +196,11 @@ function reducer(state: MatchState, action: Action): MatchState {
     case "START_MATCH": {
       const battingTeamIdx: 0 | 1 =
         action.strikerId && action.nonStrikerId
-          ? (state.teams[0].players.some((p) => p.id === action.strikerId) ? 0 : 1)
+          ? state.teams[0].players.some((p) => p.id === action.strikerId)
+            ? 0
+            : 1
           : 0;
-      const bowlingTeamIdx: 0 | 1 = (battingTeamIdx === 0 ? 1 : 0);
+      const bowlingTeamIdx: 0 | 1 = battingTeamIdx === 0 ? 1 : 0;
       return {
         ...state,
         phase: "live",
@@ -158,7 +223,14 @@ function reducer(state: MatchState, action: Action): MatchState {
       return { ...state, authUser: action.user };
     }
     case "LOGOUT": {
-      return { ...state, authUser: null, phase: "home", innings: [], currentInningsIdx: 0, ended: false };
+      return {
+        ...state,
+        authUser: null,
+        phase: "home",
+        innings: [],
+        currentInningsIdx: 0,
+        ended: false,
+      };
     }
     case "ADD_BALL": {
       const inn = state.innings[state.currentInningsIdx];
@@ -170,7 +242,8 @@ function reducer(state: MatchState, action: Action): MatchState {
       const last = newBalls[newBalls.length - 1];
       // swap on odd runs (off bat, not on extras' automatic 1)
       const batRuns = raw.extra ? raw.runs : raw.runs;
-      const shouldSwap = !raw.isWicket && !raw.extra && batRuns % 2 === 1 ||
+      const shouldSwap =
+        (!raw.isWicket && !raw.extra && batRuns % 2 === 1) ||
         (raw.extra === "noball" && raw.runs % 2 === 1);
       if (shouldSwap) {
         [striker, nonStriker] = [nonStriker, striker];
@@ -181,7 +254,12 @@ function reducer(state: MatchState, action: Action): MatchState {
       }
       let outPlayers = inn.outPlayers;
       if (raw.isWicket && raw.dismissalType !== "Retired Hurt") {
-        const outId = raw.batterOutId ?? raw.strikerId;
+        const outId =
+          raw.dismissalType === "Run Out"
+            ? raw.runOutSide === "non-striker"
+              ? raw.nonStrikerId
+              : raw.strikerId
+            : (raw.batterOutId ?? raw.strikerId);
         outPlayers = [...outPlayers, outId];
       }
       const newInnings = [...state.innings];
@@ -198,8 +276,9 @@ function reducer(state: MatchState, action: Action): MatchState {
       const inn = state.innings[state.currentInningsIdx];
       if (!inn.balls.length) return state;
       const newBalls = recomputeOverIndices(inn.balls.slice(0, -1).map(stripComputed));
+      const rebuilt = rebuildInningsFromBalls(inn, newBalls);
       const newInnings = [...state.innings];
-      newInnings[state.currentInningsIdx] = { ...inn, balls: newBalls };
+      newInnings[state.currentInningsIdx] = { ...inn, balls: newBalls, ...rebuilt };
       return { ...state, innings: newInnings };
     }
     case "EDIT_BALL": {
@@ -208,16 +287,18 @@ function reducer(state: MatchState, action: Action): MatchState {
         b.id === action.ballId ? { ...b, ...action.patch } : b,
       );
       const newBalls = recomputeOverIndices(updated.map(stripComputed));
+      const rebuilt = rebuildInningsFromBalls(inn, newBalls);
       const newInnings = [...state.innings];
-      newInnings[state.currentInningsIdx] = { ...inn, balls: newBalls };
+      newInnings[state.currentInningsIdx] = { ...inn, balls: newBalls, ...rebuilt };
       return { ...state, innings: newInnings };
     }
     case "DELETE_BALL": {
       const inn = state.innings[state.currentInningsIdx];
       const filtered = inn.balls.filter((b) => b.id !== action.ballId);
       const newBalls = recomputeOverIndices(filtered.map(stripComputed));
+      const rebuilt = rebuildInningsFromBalls(inn, newBalls);
       const newInnings = [...state.innings];
-      newInnings[state.currentInningsIdx] = { ...inn, balls: newBalls };
+      newInnings[state.currentInningsIdx] = { ...inn, balls: newBalls, ...rebuilt };
       return { ...state, innings: newInnings };
     }
     case "FINISH_OVER": {
@@ -257,8 +338,8 @@ function reducer(state: MatchState, action: Action): MatchState {
     }
     case "START_SECOND_INNINGS": {
       const first = state.innings[0];
-      const battingTeamIdx: 0 | 1 = (first.bowlingTeamIdx);
-      const bowlingTeamIdx: 0 | 1 = (first.battingTeamIdx);
+      const battingTeamIdx: 0 | 1 = first.bowlingTeamIdx;
+      const bowlingTeamIdx: 0 | 1 = first.battingTeamIdx;
       return {
         ...state,
         currentInningsIdx: 1,
@@ -281,6 +362,11 @@ function reducer(state: MatchState, action: Action): MatchState {
       return { ...state, ended: true, phase: "summary" };
     case "SET_MATCH_SAVED":
       return { ...state, matchSaved: true };
+    case "RESTORE_SNAPSHOT":
+      return {
+        ...state,
+        ...action.snapshot,
+      };
     default:
       return state;
   }
@@ -300,18 +386,50 @@ export function CricketProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initial);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     try {
-      // only run in browser
-      const { getAuth } = require("@/lib/auth");
-      const auth = getAuth();
-      if (auth && auth.user) {
-        dispatch({ type: "LOGIN", user: auth.user });
-      }
-    } catch (err) {
-      // ignore during SSR or if auth isn't available
+      const raw = window.localStorage.getItem(SNAPSHOT_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as {
+        phase?: MatchState["phase"];
+        teams?: MatchState["teams"];
+        overs?: number;
+        bowlerLimit?: number;
+        tossWinnerIdx?: 0 | 1;
+        decision?: "bat" | "bowl";
+        innings?: MatchState["innings"];
+        currentInningsIdx?: 0 | 1;
+        ended?: boolean;
+        matchSaved?: boolean;
+      };
+
+      if (!parsed || parsed.phase === undefined) return;
+
+      dispatch({
+        type: "RESTORE_SNAPSHOT",
+        snapshot: {
+          phase: parsed.phase,
+          teams: parsed.teams ?? initial.teams,
+          overs: parsed.overs ?? initial.overs,
+          bowlerLimit: parsed.bowlerLimit ?? initial.bowlerLimit,
+          tossWinnerIdx: parsed.tossWinnerIdx ?? initial.tossWinnerIdx,
+          decision: parsed.decision ?? initial.decision,
+          innings: parsed.innings ?? initial.innings,
+          currentInningsIdx: parsed.currentInningsIdx ?? initial.currentInningsIdx,
+          ended: parsed.ended ?? initial.ended,
+          matchSaved: parsed.matchSaved ?? initial.matchSaved,
+        },
+      });
+    } catch {
+      // ignore malformed snapshots
     }
-    // run once on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const auth = getAuth();
+    if (auth && auth.user) {
+      dispatch({ type: "LOGIN", user: auth.user });
+    }
   }, []);
 
   useEffect(() => {
@@ -332,6 +450,23 @@ export function CricketProvider({ children }: { children: ReactNode }) {
     };
 
     const timer = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snapshot));
+        const hasPlayers = state.teams.some((team) => team.players.length > 0);
+        if (hasPlayers) {
+          window.localStorage.setItem(
+            LAST_TEAMS_KEY,
+            JSON.stringify({
+              teams: state.teams,
+              overs: state.overs,
+              bowlerLimit: state.bowlerLimit,
+            }),
+          );
+        }
+      } catch {
+        // ignore storage write errors
+      }
+
       const syncLiveMatch = async () => {
         try {
           if (state.phase === "live" && state.innings.length > 0) {
@@ -352,7 +487,19 @@ export function CricketProvider({ children }: { children: ReactNode }) {
     }, 250);
 
     return () => window.clearTimeout(timer);
-  }, [state.phase, state.teams, state.overs, state.bowlerLimit, state.tossWinnerIdx, state.decision, state.innings, state.currentInningsIdx, state.ended, state.authUser, state.matchSaved]);
+  }, [
+    state.phase,
+    state.teams,
+    state.overs,
+    state.bowlerLimit,
+    state.tossWinnerIdx,
+    state.decision,
+    state.innings,
+    state.currentInningsIdx,
+    state.ended,
+    state.authUser,
+    state.matchSaved,
+  ]);
 
   const value = useMemo(() => ({ state, dispatch }), [state]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

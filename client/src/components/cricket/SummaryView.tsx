@@ -5,8 +5,14 @@ import { Link } from "@tanstack/react-router";
 import { useCricket } from "@/lib/cricket/store";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  batterStats, bowlerEconomy, bowlerStats, getWinnerIdx,
-  inningsTotals, oversString, playerOfTheMatch, winningMargin,
+  batterStats,
+  bowlerEconomy,
+  bowlerStats,
+  getWinnerIdx,
+  inningsTotals,
+  oversString,
+  playerOfTheMatch,
+  winningMargin,
 } from "@/lib/cricket/stats";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
@@ -30,10 +36,7 @@ export function SummaryView() {
         startedAt: new Date().toISOString(),
         completedAt: new Date().toISOString(),
         winnerTeamIdx: winnerIdx,
-        result:
-          winnerIdx !== null
-            ? `${state.teams[winnerIdx].name} won ${margin}`
-            : "Match tied",
+        result: winnerIdx !== null ? `${state.teams[winnerIdx].name} won ${margin}` : "Match tied",
         teams: state.teams,
         innings: state.innings,
         metadata: { savedAt: new Date().toISOString() },
@@ -63,7 +66,11 @@ export function SummaryView() {
       const players = state.teams[inn.battingTeamIdx].players;
       for (const b of batterStats(inn, players)) {
         if (!best || b.runs > best.runs) {
-          best = { name: players.find((p) => p.id === b.playerId)?.name ?? "", runs: b.runs, balls: b.balls };
+          best = {
+            name: players.find((p) => p.id === b.playerId)?.name ?? "",
+            runs: b.runs,
+            balls: b.balls,
+          };
         }
       }
     }
@@ -74,8 +81,16 @@ export function SummaryView() {
     for (const inn of state.innings) {
       const players = state.teams[inn.bowlingTeamIdx].players;
       for (const b of bowlerStats(inn)) {
-        if (!best || b.wickets > best.wickets || (b.wickets === best.wickets && b.runs < best.runs)) {
-          best = { name: players.find((p) => p.id === b.playerId)?.name ?? "", wickets: b.wickets, runs: b.runs };
+        if (
+          !best ||
+          b.wickets > best.wickets ||
+          (b.wickets === best.wickets && b.runs < best.runs)
+        ) {
+          best = {
+            name: players.find((p) => p.id === b.playerId)?.name ?? "",
+            wickets: b.wickets,
+            runs: b.runs,
+          };
         }
       }
     }
@@ -83,8 +98,9 @@ export function SummaryView() {
   };
   const tb = topBatter();
   const tw = topBowler();
-  const potmPlayer =
-    potm ? state.teams[potm.teamIdx].players.find((p) => p.id === potm.playerId) : null;
+  const potmPlayer = potm
+    ? state.teams[potm.teamIdx].players.find((p) => p.id === potm.playerId)
+    : null;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
@@ -113,7 +129,9 @@ export function SummaryView() {
               <p className="mt-1 text-lg font-semibold">{state.teams[inn.battingTeamIdx].name}</p>
               <p className="mt-3 text-3xl font-bold gold-text">
                 {t.runs}/{t.wickets}{" "}
-                <span className="text-base text-muted-foreground">({oversString(t.legalBalls)})</span>
+                <span className="text-base text-muted-foreground">
+                  ({oversString(t.legalBalls)})
+                </span>
               </p>
             </div>
           );
@@ -129,7 +147,9 @@ export function SummaryView() {
                 <Award className="h-8 w-8 text-gold" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs uppercase tracking-widest text-gold">🏆 Player of the Match</p>
+                <p className="text-xs uppercase tracking-widest text-gold">
+                  🏆 Player of the Match
+                </p>
                 <p className="mt-1 truncate text-2xl font-bold">{potmPlayer.name}</p>
                 <p className="text-sm text-muted-foreground">{potm.reason}</p>
               </div>
@@ -143,7 +163,8 @@ export function SummaryView() {
                     <TooltipContent className="max-w-xs whitespace-pre-line text-left text-[11px]">
                       {potm.breakdown.map((line, index) => (
                         <span key={index}>
-                          {line}{index < potm.breakdown.length - 1 ? "\n" : ""}
+                          {line}
+                          {index < potm.breakdown.length - 1 ? "\n" : ""}
                         </span>
                       ))}
                     </TooltipContent>
@@ -160,14 +181,18 @@ export function SummaryView() {
           <div className="glass-card p-5">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">Top Batter</p>
             <p className="mt-1 text-xl font-semibold">{tb.name}</p>
-            <p className="text-sm text-muted-foreground">{tb.runs} ({tb.balls})</p>
+            <p className="text-sm text-muted-foreground">
+              {tb.runs} ({tb.balls})
+            </p>
           </div>
         )}
         {tw && (
           <div className="glass-card p-5">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">Top Bowler</p>
             <p className="mt-1 text-xl font-semibold">{tw.name}</p>
-            <p className="text-sm text-muted-foreground">{tw.wickets}/{tw.runs}</p>
+            <p className="text-sm text-muted-foreground">
+              {tw.wickets}/{tw.runs}
+            </p>
           </div>
         )}
       </div>
@@ -182,11 +207,10 @@ export function SummaryView() {
         <button
           onClick={() => {
             dispatch({ type: "SET_TEAMS", teams: state.teams });
-            dispatch({ type: "GOTO_SETUP" });
           }}
           className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-white/10"
         >
-          Restart Same Teams
+          Restart with same team
         </button>
         <Link
           to="/history"
@@ -197,8 +221,8 @@ export function SummaryView() {
         <button
           onClick={() => {
             clearAuth();
-            dispatch({ type: 'LOGOUT' });
-            window.location.href = '/';
+            dispatch({ type: "LOGOUT" });
+            window.location.href = "/";
           }}
           className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-white/10"
         >

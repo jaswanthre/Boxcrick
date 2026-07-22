@@ -24,11 +24,16 @@ function VisitorDashboard() {
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-bold">Visitor Dashboard</h2>
         <div className="flex gap-2">
-          <Link to="/history" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm">History</Link>
+          <Link
+            to="/history"
+            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
+          >
+            History
+          </Link>
           <button
             onClick={() => {
               clearAuth();
-              window.location.href = '/';
+              window.location.href = "/";
             }}
             className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
           >
@@ -41,8 +46,14 @@ function VisitorDashboard() {
         {hasLive ? (
           <div>
             <p className="text-xs text-muted-foreground">Live Match</p>
-            <h3 className="mt-2 text-xl font-semibold">{state.teams[currentInn.battingTeamIdx].name} vs {state.teams[currentInn.bowlingTeamIdx].name}</h3>
-            <p className="mt-2 text-sm">{inningsTotals(currentInn).runs}/{inningsTotals(currentInn).wickets} ({state.overs} overs)</p>
+            <h3 className="mt-2 text-xl font-semibold">
+              {state.teams[currentInn.battingTeamIdx].name} vs{" "}
+              {state.teams[currentInn.bowlingTeamIdx].name}
+            </h3>
+            <p className="mt-2 text-sm">
+              {inningsTotals(currentInn).runs}/{inningsTotals(currentInn).wickets} ({state.overs}{" "}
+              overs)
+            </p>
           </div>
         ) : (
           <div className="text-sm text-muted-foreground">No live match currently.</div>

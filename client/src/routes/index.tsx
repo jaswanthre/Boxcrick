@@ -1,12 +1,12 @@
 import { useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { CricketProvider, useCricket } from "@/lib/cricket/store";
+import { useCricket } from "@/lib/cricket/store";
 import { HomeView } from "@/components/cricket/HomeView";
 import { SetupView } from "@/components/cricket/SetupView";
 import { LiveView } from "@/components/cricket/LiveView";
 import { SummaryView } from "@/components/cricket/SummaryView";
 import { LoginView } from "@/components/auth/LoginView";
-import { getAuth } from "@/lib/auth";
+import { getAuth, isVisitorSession } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -14,6 +14,14 @@ export const Route = createFileRoute("/")({
 
 function Router() {
   const { state } = useCricket();
+
+  useEffect(() => {
+    if (isVisitorSession()) {
+      window.location.replace("/visitor");
+    }
+  }, []);
+
+  if (isVisitorSession()) return null;
   if (!state.authUser) return <LoginView />;
   if (state.phase === "home") return <HomeView />;
   if (state.phase === "setup") return <SetupView />;
@@ -27,7 +35,7 @@ function AuthLoader() {
   useEffect(() => {
     const auth = getAuth();
     if (auth && !state.authUser) {
-      dispatch({ type: 'LOGIN', user: auth.user });
+      dispatch({ type: "LOGIN", user: auth.user });
     }
   }, [state.authUser, dispatch]);
 
@@ -36,9 +44,9 @@ function AuthLoader() {
 
 function Index() {
   return (
-    <CricketProvider>
+    <>
       <AuthLoader />
       <Router />
-    </CricketProvider>
+    </>
   );
 }

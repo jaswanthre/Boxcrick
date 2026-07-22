@@ -69,13 +69,18 @@
   * {
     border-color: var(--color-border);
   }
-  html, body {
-    background: radial-gradient(ellipse at top, oklch(0.19 0.02 265) 0%, oklch(0.09 0.005 260) 60%) fixed;
+  html,
+  body {
+    background: radial-gradient(ellipse at top, oklch(0.19 0.02 265) 0%, oklch(0.09 0.005 260) 60%)
+      fixed;
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
-  h1, h2, h3, h4 {
+  h1,
+  h2,
+  h3,
+  h4 {
     font-family: var(--font-display);
     letter-spacing: -0.02em;
   }
@@ -112,6 +117,11 @@
     background: oklch(1 0 0 / 10%);
     transform: translateY(-1px);
   }
-  &:active:not(:disabled) { transform: translateY(0); }
-  &:disabled { opacity: 0.4; cursor: not-allowed; }
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
 }

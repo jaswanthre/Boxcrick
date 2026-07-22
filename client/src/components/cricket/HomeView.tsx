@@ -4,6 +4,8 @@ import { Link } from "@tanstack/react-router";
 import { useCricket } from "@/lib/cricket/store";
 import type { Team } from "@/lib/cricket/types";
 
+const LAST_TEAMS_KEY = "criclive_last_teams";
+
 function TeamCard({ teamIdx }: { teamIdx: 0 | 1 }) {
   const { state, dispatch } = useCricket();
   const team: Team = state.teams[teamIdx];
@@ -29,7 +31,10 @@ function TeamCard({ teamIdx }: { teamIdx: 0 | 1 }) {
 
       <div className="space-y-2">
         {team.players.map((p, i) => (
-          <div key={p.id} className="group flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2">
+          <div
+            key={p.id}
+            className="group flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2"
+          >
             <span className="w-6 text-xs text-muted-foreground">{i + 1}.</span>
             {editingId === p.id ? (
               <>
@@ -41,12 +46,22 @@ function TeamCard({ teamIdx }: { teamIdx: 0 | 1 }) {
                 />
                 <button
                   onClick={() => {
-                    dispatch({ type: "UPDATE_PLAYER", teamIdx, id: p.id, name: editingName.trim() || p.name });
+                    dispatch({
+                      type: "UPDATE_PLAYER",
+                      teamIdx,
+                      id: p.id,
+                      name: editingName.trim() || p.name,
+                    });
                     setEditingId(null);
                   }}
                   className="rounded p-1.5 text-success hover:bg-white/10"
-                ><Check className="h-4 w-4" /></button>
-                <button onClick={() => setEditingId(null)} className="rounded p-1.5 text-muted-foreground hover:bg-white/10">
+                >
+                  <Check className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setEditingId(null)}
+                  className="rounded p-1.5 text-muted-foreground hover:bg-white/10"
+                >
                   <X className="h-4 w-4" />
                 </button>
               </>
@@ -54,13 +69,20 @@ function TeamCard({ teamIdx }: { teamIdx: 0 | 1 }) {
               <>
                 <span className="flex-1 min-w-0 truncate text-sm">{p.name}</span>
                 <button
-                  onClick={() => { setEditingId(p.id); setEditingName(p.name); }}
+                  onClick={() => {
+                    setEditingId(p.id);
+                    setEditingName(p.name);
+                  }}
                   className="rounded p-1.5 text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:bg-white/10 hover:text-foreground"
-                ><Pencil className="h-4 w-4" /></button>
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
                 <button
                   onClick={() => dispatch({ type: "DELETE_PLAYER", teamIdx, id: p.id })}
                   className="rounded p-1.5 text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:bg-white/10 hover:text-danger"
-                ><Trash2 className="h-4 w-4" /></button>
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </>
             )}
           </div>
@@ -95,12 +117,49 @@ function TeamCard({ teamIdx }: { teamIdx: 0 | 1 }) {
 
 export function HomeView() {
   const { state, dispatch } = useCricket();
-  const canStart =
-    state.teams[0].players.length >= 2 && state.teams[1].players.length >= 2;
-  
+  const canStart = state.teams[0].players.length >= 2 && state.teams[1].players.length >= 2;
+  const [hasSavedTeams, setHasSavedTeams] = useState(false);
 
   const [isFlipping, setIsFlipping] = useState(false);
   const [tossResultLabel, setTossResultLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      if (typeof window === "undefined") return;
+      const raw = window.localStorage.getItem(LAST_TEAMS_KEY);
+      if (!raw) {
+        setHasSavedTeams(false);
+        return;
+      }
+      const parsed = JSON.parse(raw) as { teams?: Team[] };
+      const valid = !!parsed?.teams && parsed.teams.length === 2;
+      setHasSavedTeams(valid);
+    } catch {
+      setHasSavedTeams(false);
+    }
+  }, [state.teams]);
+
+  const restartWithSameTeam = () => {
+    try {
+      if (typeof window === "undefined") return;
+      const raw = window.localStorage.getItem(LAST_TEAMS_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as {
+        teams?: [Team, Team];
+        overs?: number;
+        bowlerLimit?: number;
+      };
+      if (!parsed?.teams || parsed.teams.length !== 2) return;
+      dispatch({
+        type: "SET_TEAMS",
+        teams: parsed.teams,
+        overs: parsed.overs,
+        bowlerLimit: parsed.bowlerLimit,
+      });
+    } catch {
+      // ignore malformed saved data
+    }
+  };
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:py-12">
@@ -119,7 +178,9 @@ export function HomeView() {
       <div className="space-y-6">
         <div className="mb-2 px-2 sm:px-0">
           <h2 className="text-xl font-semibold">Create Match</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Add your players and set up the match in just a few taps.</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Add your players and set up the match in just a few taps.
+          </p>
         </div>
 
         <div className="grid gap-5 md:grid-cols-2">
@@ -130,22 +191,30 @@ export function HomeView() {
         <div className="glass-card p-6 sm:p-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground">
-              {canStart ? "Ready to set up your match." : "Add at least 2 players per team to continue."}
+              {canStart
+                ? "Ready to set up your match."
+                : "Add at least 2 players per team to continue."}
             </p>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <div className="flex flex-col gap-3 rounded-3xl border border-white/10 p-4 sm:flex-row sm:items-center sm:gap-4">
                 <div className="flex items-center gap-3">
                   <div
-                    className={`coin ${isFlipping ? 'flipping' : ''}`}
+                    className={`coin ${isFlipping ? "flipping" : ""}`}
                     role="img"
-                    aria-label={tossResultLabel ? `Toss: ${tossResultLabel}` : 'Coin'}
+                    aria-label={tossResultLabel ? `Toss: ${tossResultLabel}` : "Coin"}
                     style={{ width: 44, height: 44 }}
                   >
                     <div className="coin-face coin-heads">H</div>
                     <div className="coin-face coin-tails">T</div>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {tossResultLabel ? <span>Result: <strong className="ml-1">{tossResultLabel}</strong></span> : <span>Flip to decide toss</span>}
+                    {tossResultLabel ? (
+                      <span>
+                        Result: <strong className="ml-1">{tossResultLabel}</strong>
+                      </span>
+                    ) : (
+                      <span>Flip to decide toss</span>
+                    )}
                   </div>
                 </div>
                 <button
@@ -159,13 +228,13 @@ export function HomeView() {
                     try {
                       const arr = new Uint32Array(1);
                       crypto.getRandomValues(arr);
-                      head = (arr[0] / 0xffffffff) < 0.5;
+                      head = arr[0] / 0xffffffff < 0.5;
                     } catch (e) {
                       head = Math.random() < 0.5;
                     }
-                    const label = head ? 'Heads' : 'Tails';
+                    const label = head ? "Heads" : "Tails";
                     setTossResultLabel(label);
-                    dispatch({ type: 'SET_TOSS', tossWinnerIdx: head ? 0 : 1, decision: 'bat' });
+                    dispatch({ type: "SET_TOSS", tossWinnerIdx: head ? 0 : 1, decision: "bat" });
                     setIsFlipping(false);
                   }}
                   className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium hover:bg-white/10 disabled:opacity-40 sm:w-auto"
@@ -182,13 +251,20 @@ export function HomeView() {
                   <RotateCcw className="h-4 w-4" /> Reset
                 </button>
                 <button
+                  onClick={restartWithSameTeam}
+                  disabled={!hasSavedTeams}
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-foreground transition hover:bg-white/10 disabled:opacity-40 sm:w-auto"
+                >
+                  <RotateCcw className="h-4 w-4" /> Restart Same Team
+                </button>
+                <button
                   disabled={!canStart}
                   onClick={() => dispatch({ type: "GOTO_SETUP" })}
                   className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-br from-gold to-[oklch(0.72_0.16_70)] px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-gold/20 transition hover:brightness-110 disabled:opacity-40 disabled:shadow-none sm:w-auto"
                 >
                   <Play className="h-4 w-4" /> Start Match
                 </button>
-                
+
                 <Link
                   to="/history"
                   className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-white/10 sm:w-auto"
@@ -207,7 +283,6 @@ export function HomeView() {
           `}</style>
         </div>
       </div>
-      
     </div>
   );
 }

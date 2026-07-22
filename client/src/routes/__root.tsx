@@ -81,16 +81,36 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "CricLive — Fast Cricket Live Scoring" },
-      { name: "description", content: "A clean, modern cricket live scoring app for local matches. Fast one-click scoring, live scoreboard, and instant match summaries." },
+      {
+        name: "description",
+        content:
+          "A clean, modern cricket live scoring app for local matches. Fast one-click scoring, live scoreboard, and instant match summaries.",
+      },
       { name: "author", content: "CricLive" },
       { property: "og:title", content: "CricLive — Fast Cricket Live Scoring" },
-      { property: "og:description", content: "A clean, modern cricket live scoring app for local matches. Fast one-click scoring, live scoreboard, and instant match summaries." },
+      {
+        property: "og:description",
+        content:
+          "A clean, modern cricket live scoring app for local matches. Fast one-click scoring, live scoreboard, and instant match summaries.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "CricLive — Fast Cricket Live Scoring" },
-      { name: "twitter:description", content: "A clean, modern cricket live scoring app for local matches. Fast one-click scoring, live scoreboard, and instant match summaries." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d2de466b-c68e-4b25-aa22-c8cefa60697a/id-preview-fd49c750--7d34f3ca-06a8-413a-a281-448118581ef8.lovable.app-1784542263493.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d2de466b-c68e-4b25-aa22-c8cefa60697a/id-preview-fd49c750--7d34f3ca-06a8-413a-a281-448118581ef8.lovable.app-1784542263493.png" },
+      {
+        name: "twitter:description",
+        content:
+          "A clean, modern cricket live scoring app for local matches. Fast one-click scoring, live scoreboard, and instant match summaries.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d2de466b-c68e-4b25-aa22-c8cefa60697a/id-preview-fd49c750--7d34f3ca-06a8-413a-a281-448118581ef8.lovable.app-1784542263493.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d2de466b-c68e-4b25-aa22-c8cefa60697a/id-preview-fd49c750--7d34f3ca-06a8-413a-a281-448118581ef8.lovable.app-1784542263493.png",
+      },
     ],
     links: [
       {
@@ -99,7 +119,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap",
+      },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),
@@ -147,8 +170,8 @@ function AppLayout({ children }: { children: ReactNode }) {
           <button
             onClick={() => {
               clearAuth();
-              dispatch({ type: 'LOGOUT' });
-              window.location.replace('/');
+              dispatch({ type: "LOGOUT" });
+              window.location.replace("/");
             }}
             className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
           >

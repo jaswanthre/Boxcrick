@@ -9,14 +9,14 @@ export function SetupView() {
   const [decision, setDecision] = useState<"bat" | "bowl">("bat");
   const [isFlipping, setIsFlipping] = useState(false);
   const [tossResultLabel, setTossResultLabel] = useState<string | null>(null);
-  const [overs, setOvers] = useState(state.overs || 6);
-  const [bowlerLimit, setBowlerLimit] = useState(state.bowlerLimit || 3);
+  const [overs, setOvers] = useState<number | "">("");
+  const [bowlerLimit, setBowlerLimit] = useState<number | "">("");
   const [strikerId, setStrikerId] = useState("");
   const [nonStrikerId, setNonStrikerId] = useState("");
   const [bowlerId, setBowlerId] = useState("");
 
   const battingIdx: 0 | 1 = useMemo(() => {
-    return decision === "bat" ? tossWinner : (tossWinner === 0 ? 1 : 0);
+    return decision === "bat" ? tossWinner : tossWinner === 0 ? 1 : 0;
   }, [tossWinner, decision]);
   const bowlingIdx: 0 | 1 = battingIdx === 0 ? 1 : 0;
 
@@ -27,9 +27,21 @@ export function SetupView() {
   const nonStrikerOptions = batterOptions.filter((o) => o.value !== strikerId);
   const bowlerOptions = bowlingTeam.players.map((p) => ({ value: p.id, label: p.name }));
 
-  const canStart = strikerId && nonStrikerId && bowlerId && strikerId !== nonStrikerId && overs > 0;
+  const hasValidOvers = typeof overs === "number" && overs > 0;
+  const hasValidBowlerLimit =
+    typeof bowlerLimit === "number" &&
+    bowlerLimit > 0 &&
+    (typeof overs === "number" ? bowlerLimit <= overs : false);
+  const canStart =
+    strikerId &&
+    nonStrikerId &&
+    bowlerId &&
+    strikerId !== nonStrikerId &&
+    hasValidOvers &&
+    hasValidBowlerLimit;
 
   const start = () => {
+    if (!hasValidOvers || !hasValidBowlerLimit) return;
     dispatch({ type: "SET_TOSS", tossWinnerIdx: tossWinner, decision });
     dispatch({ type: "SET_OVERS", overs });
     dispatch({ type: "SET_BOWLER_LIMIT", bowlerLimit });
@@ -71,16 +83,22 @@ export function SetupView() {
             <div className="mt-3 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div
-                  className={`coin ${isFlipping ? 'flipping' : ''}`}
+                  className={`coin ${isFlipping ? "flipping" : ""}`}
                   role="img"
-                  aria-label={tossResultLabel ? `Toss: ${tossResultLabel}` : 'Coin'}
+                  aria-label={tossResultLabel ? `Toss: ${tossResultLabel}` : "Coin"}
                   style={{ width: 48, height: 48 }}
                 >
                   <div className="coin-face coin-heads">H</div>
                   <div className="coin-face coin-tails">T</div>
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {tossResultLabel ? <span>Result: <strong className="ml-1">{tossResultLabel}</strong></span> : <span>Flip to decide toss</span>}
+                  {tossResultLabel ? (
+                    <span>
+                      Result: <strong className="ml-1">{tossResultLabel}</strong>
+                    </span>
+                  ) : (
+                    <span>Flip to decide toss</span>
+                  )}
                 </div>
               </div>
               <div>
@@ -99,12 +117,12 @@ export function SetupView() {
                       const arr = new Uint32Array(1);
                       crypto.getRandomValues(arr);
                       // convert to 0..1
-                      head = (arr[0] / 0xffffffff) < 0.5;
+                      head = arr[0] / 0xffffffff < 0.5;
                     } catch (e) {
                       // fallback to Math.random if crypto unavailable
                       head = Math.random() < 0.5;
                     }
-                    const label = head ? 'Heads' : 'Tails';
+                    const label = head ? "Heads" : "Tails";
                     setTossResultLabel(label);
                     // Map Heads to team 0, Tails to team 1
                     setTossWinner(head ? 0 : 1);
@@ -143,10 +161,18 @@ export function SetupView() {
               max={50}
               value={overs}
               onChange={(e) => {
-                const next = Math.max(1, Number(e.target.value) || 1);
+                const raw = e.target.value;
+                if (raw === "") {
+                  setOvers("");
+                  return;
+                }
+                const next = Math.max(1, Number(raw) || 1);
                 setOvers(next);
-                if (bowlerLimit > next) setBowlerLimit(next);
+                if (typeof bowlerLimit === "number" && bowlerLimit > next) {
+                  setBowlerLimit(next);
+                }
               }}
+              placeholder="Enter overs"
               className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none focus:border-gold/40"
             />
           </Field>
@@ -155,9 +181,19 @@ export function SetupView() {
             <input
               type="number"
               min={1}
-              max={overs}
+              max={typeof overs === "number" ? overs : undefined}
               value={bowlerLimit}
-              onChange={(e) => setBowlerLimit(Math.max(1, Math.min(Number(e.target.value) || 1, overs)))}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === "") {
+                  setBowlerLimit("");
+                  return;
+                }
+                const parsed = Number(raw) || 1;
+                const clampedToOvers = typeof overs === "number" ? Math.min(parsed, overs) : parsed;
+                setBowlerLimit(Math.max(1, clampedToOvers));
+              }}
+              placeholder="Enter bowler limit"
               className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none focus:border-gold/40"
             />
           </Field>

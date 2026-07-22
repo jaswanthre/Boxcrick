@@ -105,7 +105,11 @@ export function SearchSelect({
   };
 
   const menuContent = (
-    <div ref={menuRef} style={portal ? (menuStyle ?? undefined) : menuStyleInline} className="overflow-hidden rounded-xl border border-white/10 bg-[oklch(0.16_0.008_260)] shadow-2xl">
+    <div
+      ref={menuRef}
+      style={portal ? (menuStyle ?? undefined) : menuStyleInline}
+      className="overflow-hidden rounded-xl border border-white/10 bg-[oklch(0.16_0.008_260)] shadow-2xl"
+    >
       <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2">
         <Search className="h-4 w-4 text-muted-foreground" />
         <input
@@ -140,7 +144,10 @@ export function SearchSelect({
 
   const modalContent = (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
-      <div ref={menuRef} className="w-full max-w-xl overflow-hidden rounded-3xl border border-white/10 bg-[oklch(0.16_0.008_260)] shadow-2xl">
+      <div
+        ref={menuRef}
+        className="w-full max-w-xl overflow-hidden rounded-3xl border border-white/10 bg-[oklch(0.16_0.008_260)] shadow-2xl"
+      >
         <div className="flex items-center gap-2 border-b border-white/10 px-4 py-4">
           <Search className="h-4 w-4 text-muted-foreground" />
           <input
@@ -174,7 +181,11 @@ export function SearchSelect({
     </div>
   );
 
-  const renderedMenu = modal ? createPortal(modalContent, document.body) : portal && menuStyle ? createPortal(menuContent, document.body) : menuContent;
+  const renderedMenu = modal
+    ? createPortal(modalContent, document.body)
+    : portal && menuStyle
+      ? createPortal(menuContent, document.body)
+      : menuContent;
 
   return (
     <>

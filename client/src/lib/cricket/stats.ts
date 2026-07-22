@@ -154,7 +154,11 @@ export function bowlerStats(innings: Innings): BowlerStat[] {
       s.legalBalls += 1;
       if (b.runs === 0 && !b.extra) s.dots += 1;
     }
-    if (b.isWicket && b.dismissalType && ["Bowled", "Caught", "Stumping"].includes(b.dismissalType)) {
+    if (
+      b.isWicket &&
+      b.dismissalType &&
+      ["Bowled", "Caught", "Stumping"].includes(b.dismissalType)
+    ) {
       s.wickets += 1;
     }
     if (!overRuns.has(b.bowlerId)) overRuns.set(b.bowlerId, new Map());
@@ -242,10 +246,24 @@ export function playerOfTheMatch(state: MatchState): {
     }
     // catches / run outs (fielders — but fielder is by name; approximate by matching to team names)
     for (const b of inn.balls) {
-      if (b.isWicket && (b.dismissalType === "Caught" || b.dismissalType === "Stumping" || b.dismissalType === "Run Out") && b.fielderName) {
+      if (
+        b.isWicket &&
+        (b.dismissalType === "Caught" ||
+          b.dismissalType === "Stumping" ||
+          b.dismissalType === "Run Out") &&
+        b.fielderName
+      ) {
         const fieldingTeam = state.teams[inn.bowlingTeamIdx];
-        const fielder = fieldingTeam.players.find((p) => p.name.toLowerCase() === b.fielderName!.toLowerCase());
-        if (fielder) add(fielder.id, inn.bowlingTeamIdx, b.dismissalType === "Run Out" ? 8 : 10, b.dismissalType);
+        const fielder = fieldingTeam.players.find(
+          (p) => p.name.toLowerCase() === b.fielderName!.toLowerCase(),
+        );
+        if (fielder)
+          add(
+            fielder.id,
+            inn.bowlingTeamIdx,
+            b.dismissalType === "Run Out" ? 8 : 10,
+            b.dismissalType,
+          );
       }
     }
   }
