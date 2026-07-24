@@ -110,13 +110,29 @@ function rebuildInningsFromBalls(
   let outPlayers: string[] = [];
 
   for (const b of balls) {
-    striker = b.strikerId;
-    nonStriker = b.nonStrikerId;
+    const startStriker = b.strikerId;
+    const startNonStriker = b.nonStrikerId;
+    striker = startStriker;
+    nonStriker = startNonStriker;
 
-    const shouldSwap =
-      (!b.isWicket && !b.extra && b.runs % 2 === 1) || (b.extra === "noball" && b.runs % 2 === 1);
-    if (shouldSwap) {
-      [striker, nonStriker] = [nonStriker, striker];
+    const isRunOut = b.isWicket && b.dismissalType === "Run Out";
+    if (isRunOut) {
+      const outId =
+        b.batterOutId ?? (b.runOutSide === "non-striker" ? startNonStriker : startStriker);
+      const survivorId = outId === startStriker ? startNonStriker : startStriker;
+      if (b.runOutSide === "non-striker") {
+        striker = survivorId;
+        nonStriker = outId;
+      } else {
+        striker = outId;
+        nonStriker = survivorId;
+      }
+    } else {
+      const shouldSwap =
+        (!b.isWicket && !b.extra && b.runs % 2 === 1) || (b.extra === "noball" && b.runs % 2 === 1);
+      if (shouldSwap) {
+        [striker, nonStriker] = [nonStriker, striker];
+      }
     }
 
     if (b.legalBallInOver === 6) {
@@ -126,9 +142,7 @@ function rebuildInningsFromBalls(
     if (b.isWicket && b.dismissalType !== "Retired Hurt") {
       const outId =
         b.dismissalType === "Run Out"
-          ? b.runOutSide === "non-striker"
-            ? b.nonStrikerId
-            : b.strikerId
+          ? (b.batterOutId ?? (b.runOutSide === "non-striker" ? b.nonStrikerId : b.strikerId))
           : (b.batterOutId ?? b.strikerId);
       outPlayers = [...outPlayers, outId];
     }
@@ -237,16 +251,32 @@ function reducer(state: MatchState, action: Action): MatchState {
       const rawBall = { ...action.ball, id: uid() };
       const newBalls = recomputeOverIndices([...inn.balls.map(stripComputed), rawBall]);
       const raw = action.ball;
-      let striker = inn.strikerId;
-      let nonStriker = inn.nonStrikerId;
+      const startStriker = inn.strikerId;
+      const startNonStriker = inn.nonStrikerId;
+      let striker = startStriker;
+      let nonStriker = startNonStriker;
       const last = newBalls[newBalls.length - 1];
-      // swap on odd runs (off bat, not on extras' automatic 1)
-      const batRuns = raw.extra ? raw.runs : raw.runs;
-      const shouldSwap =
-        (!raw.isWicket && !raw.extra && batRuns % 2 === 1) ||
-        (raw.extra === "noball" && raw.runs % 2 === 1);
-      if (shouldSwap) {
-        [striker, nonStriker] = [nonStriker, striker];
+      const isRunOut = raw.isWicket && raw.dismissalType === "Run Out";
+      if (isRunOut) {
+        const outId =
+          raw.batterOutId ?? (raw.runOutSide === "non-striker" ? startNonStriker : startStriker);
+        const survivorId = outId === startStriker ? startNonStriker : startStriker;
+        if (raw.runOutSide === "non-striker") {
+          striker = survivorId;
+          nonStriker = outId;
+        } else {
+          striker = outId;
+          nonStriker = survivorId;
+        }
+      } else {
+        // swap on odd runs (off bat, not on extras' automatic 1)
+        const batRuns = raw.extra ? raw.runs : raw.runs;
+        const shouldSwap =
+          (!raw.isWicket && !raw.extra && batRuns % 2 === 1) ||
+          (raw.extra === "noball" && raw.runs % 2 === 1);
+        if (shouldSwap) {
+          [striker, nonStriker] = [nonStriker, striker];
+        }
       }
       // end of over swap
       if (last.legalBallInOver === 6) {
@@ -256,9 +286,8 @@ function reducer(state: MatchState, action: Action): MatchState {
       if (raw.isWicket && raw.dismissalType !== "Retired Hurt") {
         const outId =
           raw.dismissalType === "Run Out"
-            ? raw.runOutSide === "non-striker"
-              ? raw.nonStrikerId
-              : raw.strikerId
+            ? (raw.batterOutId ??
+              (raw.runOutSide === "non-striker" ? raw.nonStrikerId : raw.strikerId))
             : (raw.batterOutId ?? raw.strikerId);
         outPlayers = [...outPlayers, outId];
       }

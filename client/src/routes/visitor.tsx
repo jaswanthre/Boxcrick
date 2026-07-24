@@ -7,9 +7,9 @@ import {
   bowlerEconomy,
   bowlerOversString,
   bowlerStats,
+  currentOverBalls,
   currentPartnership,
   inningsTotals,
-  lastSixBalls,
   oversString,
   runRate,
 } from "@/lib/cricket/stats";
@@ -195,7 +195,7 @@ function VisitorView() {
                 <span className="text-xs uppercase tracking-wider text-muted-foreground">
                   This over
                 </span>
-                {lastSixBalls(inn!).map((b) => (
+                {currentOverBalls(inn!).map((b) => (
                   <BallBadge key={b.id} b={b} />
                 ))}
               </div>

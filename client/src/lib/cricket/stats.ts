@@ -203,8 +203,10 @@ export function currentPartnership(innings: Innings) {
   return { runs, balls };
 }
 
-export function lastSixBalls(innings: Innings): Ball[] {
-  return innings.balls.slice(-6);
+export function currentOverBalls(innings: Innings): Ball[] {
+  if (innings.balls.length === 0) return [];
+  const currentOverIdx = innings.balls[innings.balls.length - 1].overIdx;
+  return innings.balls.filter((b) => b.overIdx === currentOverIdx);
 }
 
 export function playerOfTheMatch(state: MatchState): {
@@ -238,7 +240,7 @@ export function playerOfTheMatch(state: MatchState): {
     const bowl = bowlerStats(inn);
     for (const bw of bowl) {
       const econ = bowlerEconomy(bw);
-      const wktPts = bw.wickets * 20;
+      const wktPts = bw.wickets * 10;
       const econPts = bw.legalBalls >= 12 ? Math.max(0, (8 - econ) * 3) : 0;
       const dotPts = bw.dots * 0.5;
       const total = wktPts + econPts + dotPts;

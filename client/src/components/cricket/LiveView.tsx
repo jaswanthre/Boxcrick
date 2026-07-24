@@ -7,10 +7,10 @@ import {
   bowlerEconomy,
   bowlerOversString,
   bowlerStats,
+  currentOverBalls,
   currentPartnership,
   inningsTotals,
   isLegalBall,
-  lastSixBalls,
   oversString,
   runRate,
 } from "@/lib/cricket/stats";
@@ -222,7 +222,7 @@ export function LiveView() {
             <span className="text-xs uppercase tracking-wider text-muted-foreground">
               This over
             </span>
-            {lastSixBalls(inn).map((b) => (
+            {currentOverBalls(inn).map((b) => (
               <BallBadge key={b.id} b={b} />
             ))}
           </div>
@@ -771,7 +771,10 @@ function ActionPrompt({
 function BallBadge({ b }: { b: Ball }) {
   let label = "";
   let cls = "bg-white/5 text-foreground";
-  if (b.isWicket) {
+  if (b.extra === "noball" && b.isWicket) {
+    label = `NoBall+W${b.runs ? `+${b.runs}` : ""}`;
+    cls = "bg-danger/20 text-danger";
+  } else if (b.isWicket) {
     label = "W";
     cls = "bg-danger/20 text-danger";
   } else if (b.extra === "wide") {
@@ -788,7 +791,7 @@ function BallBadge({ b }: { b: Ball }) {
   } else label = String(b.runs);
   return (
     <span
-      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${cls}`}
+      className={`inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-full px-2 text-xs font-bold ${cls}`}
     >
       {label}
     </span>
@@ -922,6 +925,9 @@ function BallHistory({ onEdit }: { onEdit: (b: Ball) => void }) {
   const balls = inn.balls;
   const bowlingTeam = state.teams[inn.bowlingTeamIdx];
   const label = (b: Ball) => {
+    if (b.extra === "noball" && b.isWicket) {
+      return `NoBall+W${b.runs ? `+${b.runs}` : ""}`;
+    }
     if (b.isWicket) {
       if (b.dismissalType === "Run Out" && b.runs > 0) return `W+${b.runs}`;
       return "W";
@@ -980,52 +986,45 @@ function BallHistory({ onEdit }: { onEdit: (b: Ball) => void }) {
                   Bowler Name:- {group.bowlerIds.map((id) => bowlerName(id)).join(", ")}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  Runs = {group.runs} | Out {group.outs}
+                  Runs = {group.runs} | Wickets {group.outs}
                 </div>
               </div>
-              <div className="space-y-1">
+              <div className="flex gap-2 overflow-x-auto px-2 pb-1">
                 {group.balls.map((b) => (
                   <div
                     key={b.id}
-                    className="group flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-white/5"
+                    className="group shrink-0 rounded-xl border border-white/10 bg-white/5 px-2 py-2"
                   >
-                    <span className="w-12 text-xs font-mono text-muted-foreground">{`${b.overIdx}.${b.legalBallInOver || "+"}`}</span>
-                    <span
-                      className={`inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-full px-2 text-xs font-bold ${
-                        b.isWicket
-                          ? "bg-danger/20 text-danger"
-                          : b.extra
-                            ? "bg-white/10 text-muted-foreground"
-                            : b.runs === 4 || b.runs === 6
-                              ? "bg-gold-soft text-gold"
-                              : "bg-white/5 text-foreground"
-                      }`}
-                    >
-                      {label(b)}
-                    </span>
-                    <span className="flex-1 truncate text-xs text-muted-foreground">
-                      {b.extra
-                        ? b.extra === "wide"
-                          ? "wide"
-                          : b.isWicket && b.dismissalType === "Run Out"
-                            ? `no ball${b.runs ? ` +${b.runs}` : ""} run out`
-                            : `no ball${b.runs ? ` +${b.runs}` : ""}`
-                        : b.isWicket
-                          ? b.dismissalType
-                          : `${b.runs} run${b.runs === 1 ? "" : "s"}`}
-                    </span>
-                    <button
-                      onClick={() => onEdit(b)}
-                      className="rounded p-1 text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:bg-white/10 hover:text-foreground"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => dispatch({ type: "DELETE_BALL", ballId: b.id })}
-                      className="rounded p-1 text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:bg-white/10 hover:text-danger"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    <div className="text-center">
+                      <div className="text-[10px] font-mono text-muted-foreground">{`${b.overIdx}.${b.legalBallInOver || "+"}`}</div>
+                      <span
+                        className={`mt-1 inline-flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-xs font-bold ${
+                          b.isWicket
+                            ? "bg-danger/20 text-danger"
+                            : b.extra
+                              ? "bg-white/10 text-muted-foreground"
+                              : b.runs === 4 || b.runs === 6
+                                ? "bg-gold-soft text-gold"
+                                : "bg-white/5 text-foreground"
+                        }`}
+                      >
+                        {label(b)}
+                      </span>
+                      <div className="mt-1 flex justify-center gap-1 opacity-0 transition group-hover:opacity-100">
+                        <button
+                          onClick={() => onEdit(b)}
+                          className="rounded p-1 text-muted-foreground hover:bg-white/10 hover:text-foreground"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => dispatch({ type: "DELETE_BALL", ballId: b.id })}
+                          className="rounded p-1 text-muted-foreground hover:bg-white/10 hover:text-danger"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>

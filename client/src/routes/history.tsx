@@ -37,6 +37,33 @@ type MatchHistory = {
   innings: MatchState["innings"];
 };
 
+type PlayerAggregate = {
+  key: string;
+  name: string;
+  batting: {
+    innings: number;
+    runs: number;
+    balls: number;
+    innings25: number;
+    innings50: number;
+    bestScore: number;
+    fours: number;
+    sixes: number;
+  };
+  bowling: {
+    innings: number;
+    wickets: number;
+    runs: number;
+    legalBalls: number;
+    innings3W: number;
+    innings5W: number;
+    maidenOvers: number;
+    bestWickets: number;
+    bestRuns: number;
+  };
+  momCount: number;
+};
+
 function safeTime(value?: string) {
   if (!value) return "Unknown";
   const date = parseISO(value);
@@ -110,9 +137,44 @@ function groupMatchesByDay(matches: MatchHistory[]) {
   return grouped.sort((a, b) => b.date.getTime() - a.date.getTime());
 }
 
+function playerKey(name: string) {
+  return name.trim().toLowerCase();
+}
+
+function createPlayerAggregate(name: string): PlayerAggregate {
+  return {
+    key: playerKey(name),
+    name: name.trim(),
+    batting: {
+      innings: 0,
+      runs: 0,
+      balls: 0,
+      innings25: 0,
+      innings50: 0,
+      bestScore: 0,
+      fours: 0,
+      sixes: 0,
+    },
+    bowling: {
+      innings: 0,
+      wickets: 0,
+      runs: 0,
+      legalBalls: 0,
+      innings3W: 0,
+      innings5W: 0,
+      maidenOvers: 0,
+      bestWickets: 0,
+      bestRuns: Number.POSITIVE_INFINITY,
+    },
+    momCount: 0,
+  };
+}
+
 function HistoryPage() {
   const [matches, setMatches] = useState<MatchHistory[]>([]);
   const [status, setStatus] = useState<"loading" | "error" | "idle">("loading");
+  const [view, setView] = useState<"matches" | "players">("matches");
+  const [playerSearch, setPlayerSearch] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -148,6 +210,79 @@ function HistoryPage() {
     } as MatchState;
     return playerOfTheMatch(fakeState);
   };
+
+  const playerHistory = useMemo(() => {
+    const map = new Map<string, PlayerAggregate>();
+    const ensurePlayer = (name: string) => {
+      const key = playerKey(name);
+      if (!map.has(key)) {
+        map.set(key, createPlayerAggregate(name));
+      }
+      return map.get(key)!;
+    };
+
+    for (const match of matches) {
+      for (const team of match.teams) {
+        for (const player of team.players) {
+          ensurePlayer(player.name || "Unknown");
+        }
+      }
+
+      const potm = getPotmForMatch(match);
+      if (potm) {
+        const potmName =
+          match.teams[potm.teamIdx]?.players.find((p) => p.id === potm.playerId)?.name ?? "Unknown";
+        ensurePlayer(potmName).momCount += 1;
+      }
+
+      for (const inn of match.innings) {
+        const battingTeam = match.teams[inn.battingTeamIdx];
+        const bowlingTeam = match.teams[inn.bowlingTeamIdx];
+
+        const batRows = batterStats(inn, battingTeam.players);
+        for (const row of batRows) {
+          const name = battingTeam.players.find((p) => p.id === row.playerId)?.name ?? "Unknown";
+          const player = ensurePlayer(name);
+          player.batting.innings += 1;
+          player.batting.runs += row.runs;
+          player.batting.balls += row.balls;
+          player.batting.fours += row.fours;
+          player.batting.sixes += row.sixes;
+          if (row.runs >= 25) player.batting.innings25 += 1;
+          if (row.runs >= 50) player.batting.innings50 += 1;
+          if (row.runs > player.batting.bestScore) player.batting.bestScore = row.runs;
+        }
+
+        const bowlRows = bowlerStats(inn);
+        for (const row of bowlRows) {
+          const name = bowlingTeam.players.find((p) => p.id === row.playerId)?.name ?? "Unknown";
+          const player = ensurePlayer(name);
+          player.bowling.innings += 1;
+          player.bowling.wickets += row.wickets;
+          player.bowling.runs += row.runs;
+          player.bowling.legalBalls += row.legalBalls;
+          player.bowling.maidenOvers += row.maidens;
+          if (row.wickets >= 3) player.bowling.innings3W += 1;
+          if (row.wickets >= 5) player.bowling.innings5W += 1;
+          if (
+            row.wickets > player.bowling.bestWickets ||
+            (row.wickets === player.bowling.bestWickets && row.runs < player.bowling.bestRuns)
+          ) {
+            player.bowling.bestWickets = row.wickets;
+            player.bowling.bestRuns = row.runs;
+          }
+        }
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [matches]);
+
+  const filteredPlayers = useMemo(() => {
+    const q = playerSearch.trim().toLowerCase();
+    if (!q) return playerHistory;
+    return playerHistory.filter((player) => player.name.toLowerCase().includes(q));
+  }, [playerHistory, playerSearch]);
 
   const renderMatchDetails = (match: MatchHistory) => {
     const potm = getPotmForMatch(match);
@@ -410,6 +545,31 @@ function HistoryPage() {
         ) : null}
       </div>
 
+      <div className="mb-6 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setView("matches")}
+          className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${
+            view === "matches"
+              ? "border-gold/40 bg-gold-soft text-gold"
+              : "border-white/10 bg-white/5 text-foreground hover:bg-white/10"
+          }`}
+        >
+          Match History
+        </button>
+        <button
+          type="button"
+          onClick={() => setView("players")}
+          className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${
+            view === "players"
+              ? "border-gold/40 bg-gold-soft text-gold"
+              : "border-white/10 bg-white/5 text-foreground hover:bg-white/10"
+          }`}
+        >
+          Player History
+        </button>
+      </div>
+
       {status === "loading" ? (
         <div className="glass-card p-8 text-center text-muted-foreground">Loading history…</div>
       ) : status === "error" ? (
@@ -420,6 +580,149 @@ function HistoryPage() {
         <div className="glass-card p-8 text-center text-muted-foreground">
           No match history found yet.
           <div className="mt-4 text-sm">Finish a match and return here to see saved history.</div>
+        </div>
+      ) : view === "players" ? (
+        <div className="space-y-4">
+          <div className="glass-card p-4">
+            <label className="text-xs uppercase tracking-wider text-muted-foreground">
+              Search player
+            </label>
+            <input
+              value={playerSearch}
+              onChange={(e) => setPlayerSearch(e.target.value)}
+              placeholder="Type player name..."
+              className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm outline-none focus:border-gold/40"
+            />
+          </div>
+
+          {filteredPlayers.length === 0 ? (
+            <div className="glass-card p-8 text-center text-muted-foreground">
+              No players found for this search.
+            </div>
+          ) : (
+            <Accordion type="multiple" className="space-y-3">
+              {filteredPlayers.map((player) => {
+                const battingSr =
+                  player.batting.balls > 0
+                    ? ((player.batting.runs / player.batting.balls) * 100).toFixed(2)
+                    : "0.00";
+                const bowlingEcon =
+                  player.bowling.legalBalls > 0
+                    ? ((player.bowling.runs / player.bowling.legalBalls) * 6).toFixed(2)
+                    : "0.00";
+                const bestBowling =
+                  player.bowling.bestRuns === Number.POSITIVE_INFINITY
+                    ? "0/0"
+                    : `${player.bowling.bestRuns}/${player.bowling.bestWickets}`;
+
+                return (
+                  <AccordionItem
+                    key={player.key}
+                    value={player.key}
+                    className="overflow-hidden rounded-3xl border border-white/10 bg-white/5"
+                  >
+                    <AccordionTrigger className="px-6 py-4">
+                      <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <h3 className="text-left text-base font-semibold text-foreground">
+                          {player.name}
+                        </h3>
+                        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                          <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+                            Runs {player.batting.runs}
+                          </span>
+                          <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+                            Wickets {player.bowling.wickets}
+                          </span>
+                          <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+                            MOM {player.momCount}
+                          </span>
+                        </div>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-6 pb-6 pt-0">
+                      <div className="grid gap-4 lg:grid-cols-2">
+                        <div className="rounded-3xl border border-white/10 bg-background p-4">
+                          <p className="text-sm font-semibold text-foreground">Batting Stats</p>
+                          <div className="mt-3 overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead className="text-xs uppercase text-muted-foreground">
+                                <tr className="border-b border-white/10">
+                                  <th className="px-2 py-2 text-left">Innings</th>
+                                  <th className="px-2 py-2 text-right">Runs</th>
+                                  <th className="px-2 py-2 text-right">SR</th>
+                                  <th className="px-2 py-2 text-right">25+</th>
+                                  <th className="px-2 py-2 text-right">50+</th>
+                                  <th className="px-2 py-2 text-right">MOM</th>
+                                  <th className="px-2 py-2 text-right">Best</th>
+                                  <th className="px-2 py-2 text-right">4s</th>
+                                  <th className="px-2 py-2 text-right">6s</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td className="px-2 py-2">{player.batting.innings}</td>
+                                  <td className="px-2 py-2 text-right">{player.batting.runs}</td>
+                                  <td className="px-2 py-2 text-right">{battingSr}</td>
+                                  <td className="px-2 py-2 text-right">
+                                    {player.batting.innings25}
+                                  </td>
+                                  <td className="px-2 py-2 text-right">
+                                    {player.batting.innings50}
+                                  </td>
+                                  <td className="px-2 py-2 text-right">{player.momCount}</td>
+                                  <td className="px-2 py-2 text-right">
+                                    {player.batting.bestScore}
+                                  </td>
+                                  <td className="px-2 py-2 text-right">{player.batting.fours}</td>
+                                  <td className="px-2 py-2 text-right">{player.batting.sixes}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        <div className="rounded-3xl border border-white/10 bg-background p-4">
+                          <p className="text-sm font-semibold text-foreground">Bowling Stats</p>
+                          <div className="mt-3 overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead className="text-xs uppercase text-muted-foreground">
+                                <tr className="border-b border-white/10">
+                                  <th className="px-2 py-2 text-left">Innings</th>
+                                  <th className="px-2 py-2 text-right">Wickets</th>
+                                  <th className="px-2 py-2 text-right">Economy</th>
+                                  <th className="px-2 py-2 text-right">3+ W</th>
+                                  <th className="px-2 py-2 text-right">5+ W</th>
+                                  <th className="px-2 py-2 text-right">Maidens</th>
+                                  <th className="px-2 py-2 text-right">Best</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td className="px-2 py-2">{player.bowling.innings}</td>
+                                  <td className="px-2 py-2 text-right">{player.bowling.wickets}</td>
+                                  <td className="px-2 py-2 text-right">{bowlingEcon}</td>
+                                  <td className="px-2 py-2 text-right">
+                                    {player.bowling.innings3W}
+                                  </td>
+                                  <td className="px-2 py-2 text-right">
+                                    {player.bowling.innings5W}
+                                  </td>
+                                  <td className="px-2 py-2 text-right">
+                                    {player.bowling.maidenOvers}
+                                  </td>
+                                  <td className="px-2 py-2 text-right">{bestBowling}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+          )}
         </div>
       ) : (
         <div className="space-y-8">

@@ -15,9 +15,4 @@ const matchSchema = new mongoose.Schema(
   { strict: false, timestamps: true },
 );
 
-matchSchema.index(
-  { completedAt: 1 },
-  { expireAfterSeconds: 604800, partialFilterExpression: { completedAt: { $exists: true } } },
-);
-
 module.exports = mongoose.model('Match', matchSchema);
